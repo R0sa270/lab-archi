@@ -1,334 +1,297 @@
 import { useState } from "react";
 
-const machines = [
+const M = [
   {
-    id: "tour",
-    name: "Tour Principale",
-    role: "Hyperviseur Principal / Datacenter",
-    os: "Proxmox VE (bare-metal)",
-    specs: "Ryzen 7 9800X3D · 32GB DDR5 · RX 9070 XT",
+    id: "tour", name: "Tour Principale", role: "Hyperviseur principal", os: "Proxmox VE (bare-metal)",
+    specs: "Ryzen 7 9800X3D · 32 GB DDR5 · RX 9070 XT · RM850x", proj: "Projet 2", col: "#6366f1",
+    note: "Cœur du lab. Héberge toutes les VMs de l'infrastructure DATASC.SEA. Le GPU RX 9070 XT sera utilisé pour Hashcat lors de la simulation d'attaque du Projet 3.",
+    gpu: "RX 9070 XT → Hashcat (cassage hash NTLM) — Projet 3",
     storage: [
-      { label: "NVMe Gen5 1TB", usage: "Proxmox OS + VMs critiques" },
-      { label: "SSD SATA 2TB", usage: "VMs secondaires + ISOs" },
-      { label: "HDD 1TB", usage: "Backups locaux + archives" },
-      { label: "NVMe 256GB", usage: "Réserve / swap / temp" },
+      { l: "NVMe Gen5 1TB", u: "Proxmox OS + VMs critiques (pfSense, AD, FS)" },
+      { l: "SSD SATA 2TB", u: "VMs secondaires + stockage ISOs" },
+      { l: "HDD 1TB", u: "Backups locaux + archives" },
+      { l: "NVMe 256GB", u: "Réserve / swap / temp" },
     ],
     vms: [
-      { name: "pfSense", type: "Firewall / Routeur", cpu: "2 vCPU", ram: "2 GB", disk: "20 GB", net: "WAN + LAN + DMZ", color: "#ef4444" },
-      { name: "Windows Server AD", type: "AD / DNS / DHCP", cpu: "2 vCPU", ram: "4 GB", disk: "60 GB", net: "VLAN 60 Admin", color: "#3b82f6" },
-      { name: "Windows Server FS", type: "Serveur de fichiers", cpu: "2 vCPU", ram: "4 GB", disk: "100 GB", net: "VLAN 10/20", color: "#3b82f6" },
-      { name: "Ubuntu Server 1", type: "Serveur métier Linux", cpu: "2 vCPU", ram: "2 GB", disk: "40 GB", net: "VLAN 60 Admin", color: "#22c55e" },
-      { name: "Ubuntu Server 2", type: "Serveur applicatif", cpu: "2 vCPU", ram: "2 GB", disk: "40 GB", net: "VLAN 60 Admin", color: "#22c55e" },
+      { n: "pfSense", t: "Firewall · Routeur · DHCP · NAT", cpu: "2 vCPU", ram: "2 GB", disk: "20 GB", ip: "10.0.0.254 (GW)", col: "#ef4444" },
+      { n: "Windows Server AD", t: "Active Directory · DNS · GPO", cpu: "2 vCPU", ram: "4 GB", disk: "80 GB", ip: "10.0.99.10", col: "#3b82f6" },
+      { n: "Windows Server FS", t: "Serveur de fichiers · AGDLP", cpu: "2 vCPU", ram: "4 GB", disk: "100 GB", ip: "10.0.99.11", col: "#3b82f6" },
+      { n: "Ubuntu Server", t: "Service web Apache · logs Linux", cpu: "2 vCPU", ram: "2 GB", disk: "30 GB", ip: "10.0.99.12", col: "#22c55e" },
     ],
-    totalRam: "14 GB / 32 GB utilisés",
-    color: "#6366f1",
-    project: "Projet 2",
-    gpu: "RX 9070 XT → Hashcat (cassage hash NTLM)",
+    ram: "12 GB alloués / 32 GB disponibles", ramPct: 38,
   },
   {
-    id: "legion",
-    name: "Lenovo Legion Y540",
-    role: "Pôle SOC / Supervision",
-    os: "Proxmox VE ou Linux direct",
-    specs: "i7-9750H · 32GB RAM · RTX 2060",
-    storage: [{ label: "NVMe 512GB", usage: "Wazuh + Zabbix + logs" }],
-    vms: [
-      { name: "Wazuh SIEM", type: "Détection / alertes / logs", cpu: "4 vCPU", ram: "8 GB", disk: "100 GB", net: "LAN Management", color: "#f59e0b" },
-      { name: "Zabbix", type: "Supervision infra / graphes", cpu: "2 vCPU", ram: "4 GB", disk: "50 GB", net: "LAN Management", color: "#f59e0b" },
-    ],
-    totalRam: "12 GB / 32 GB utilisés",
-    color: "#f59e0b",
-    project: "Projet 3",
-    note: "Wazuh = SIEM/détection. Zabbix = graphes CPU/RAM/disk. Les deux ensemble couvrent 100% du Projet 3.",
+    id: "legion", name: "Lenovo Legion Y540", role: "SOC / SIEM / Supervision", os: "Ubuntu Server + Wazuh",
+    specs: "i7-9750H · 32 GB RAM · RTX 2060 · NVMe 512 GB", proj: "Projet 3", col: "#f59e0b",
+    note: "Pôle sécurité du lab. Wazuh reçoit les logs de toutes les VMs, génère les alertes, détecte les attaques Kali. Les dashboards Wazuh = preuves visuelles principales pour le jury. Zabbix en option si temps restant.",
+    storage: [{ l: "NVMe 512 GB", u: "Ubuntu + Wazuh + OpenSearch + logs" }],
+    vms: [{ n: "Wazuh SIEM", t: "Détection · Alertes · Logs centralisés", cpu: "4 vCPU", ram: "12 GB", disk: "100 GB", ip: "10.0.100.10", col: "#f59e0b" }],
+    ram: "12 GB / 32 GB — Wazuh+OpenSearch est gourmand, le Legion tient largement", ramPct: 38,
   },
   {
-    id: "dell1",
-    name: "Dell 5590 #1",
-    role: "Coffre-Fort Sauvegardes",
-    os: "Proxmox Backup Server (bare-metal)",
-    specs: "8GB DDR4 SODIMM",
-    storage: [{ label: "SSD interne", usage: "PBS — Backups VMs Tour" }],
-    vms: [],
-    totalRam: "OS léger — PBS ne virtualise pas",
-    color: "#10b981",
-    project: "Projet 2",
-    note: "Physiquement isolé de la prod — Règle 3-2-1 — Best practice ANSSI. Argument fort pour le jury.",
+    id: "dell1", name: "Dell Latitude 5590 #1", role: "Serveur de sauvegardes", os: "Proxmox Backup Server (bare-metal)",
+    specs: "8 GB DDR4 SODIMM 2400 MHz", proj: "Projet 2", col: "#10b981",
+    note: "PBS bare-metal. Physiquement séparé de la prod = règle 3-2-1. Argument béton pour le jury : sauvegarde sur machine physique distincte, conforme aux bonnes pratiques ANSSI. Si le SSD interne est < 256 GB, ajouter un disque USB 3.0.",
+    storage: [{ l: "SSD interne", u: "PBS — stockage des backups VMs" }, { l: "Disque USB 3.0 (si besoin)", u: "Capacité supplémentaire" }],
+    vms: [], ram: "PBS est léger — toute la RAM est pour lui", ramPct: 0,
   },
   {
-    id: "dell5420",
-    name: "Dell Latitude 5420",
-    role: "Poste Admin / Client domaine",
-    os: "Windows 10/11 Pro",
-    specs: "8GB DDR4 3200MHz",
-    storage: [{ label: "SSD interne", usage: "Windows client" }],
-    vms: [],
-    totalRam: "Poste physique — client AD",
-    color: "#0ea5e9",
-    project: "Projet 2",
-    note: "Intégré au domaine DATASC.SEA. Tests GPO. RSAT pour administrer l'AD à distance.",
+    id: "dell5420", name: "Dell Latitude 5420", role: "Poste client / admin domaine", os: "Windows 11 Pro",
+    specs: "8 GB DDR4 3200 MHz", proj: "Projet 2", col: "#0ea5e9",
+    note: "Poste de démonstration. Joint au domaine DATASC.SEA. Tests GPO en conditions réelles. Administration AD à distance via les RSAT. Preuve que l'infra fonctionne côté utilisateur.",
+    storage: [{ l: "SSD interne", u: "Windows 11 Pro — client domaine" }],
+    vms: [], ram: "8 GB — suffisant", ramPct: 0,
   },
   {
-    id: "dell2",
-    name: "Dell 5590 #2",
-    role: "Machine d'Attaque Red Team",
-    os: "Kali Linux",
-    specs: "8GB DDR4 SODIMM",
-    storage: [{ label: "SSD/HDD", usage: "Kali + outils offensifs" }],
-    vms: [],
-    totalRam: "Débranchée en temps normal",
-    color: "#ef4444",
-    project: "Projet 3",
-    note: "Allumée UNIQUEMENT lors des simulations. Nmap → brute force → récupère hash NTLM → Hashcat sur GPU tour.",
+    id: "dell2", name: "Dell Latitude 5590 #2", role: "Machine d'attaque — Red Team", os: "Kali Linux",
+    specs: "8 GB DDR4 SODIMM 2400 MHz", proj: "Projet 3", col: "#ef4444",
+    note: "DÉBRANCHÉE en temps normal. Connectée uniquement lors des simulations d'attaque. Séquence : Nmap → brute force → récupération hash NTLM → Hashcat sur le GPU de la tour. Les alertes Wazuh doivent remonter en live.",
+    storage: [{ l: "SSD/HDD interne", u: "Kali Linux + outils offensifs" }],
+    vms: [], ram: "8 GB — suffisant", ramPct: 0,
   },
 ];
 
-const vlans = [
-  { id: "VLAN 10", name: "Commerciaux", subnet: "10.10.10.0/24", color: "#f59e0b", desc: "Postes utilisateurs commerciaux" },
-  { id: "VLAN 20", name: "RH", subnet: "10.10.20.0/24", color: "#ec4899", desc: "Postes RH / données sensibles" },
-  { id: "VLAN 60", name: "DSI / Admin", subnet: "10.10.60.0/24", color: "#6366f1", desc: "Serveurs, infra, administration" },
-  { id: "LAN", name: "Management", subnet: "192.168.1.0/24", color: "#10b981", desc: "Switches HPE + machines physiques" },
-  { id: "WAN", name: "Internet", subnet: "DHCP Box / Répéteur WiFi", color: "#64748b", desc: "pfSense WAN — coupure box = seul WAN coupe" },
+const VLANS = [
+  { id: "LAN Management", subnet: "10.0.0.0/24", col: "#64748b", desc: "Réseau de base — pfSense GW 10.0.0.254" },
+  { id: "VLAN 10 — Commerciaux", subnet: "10.0.10.0/24", col: "#f59e0b", desc: "Postes utilisateurs (héritage rapport DATASC.SEA)" },
+  { id: "VLAN 20 — RH", subnet: "10.0.20.0/24", col: "#ec4899", desc: "Postes RH — données sensibles" },
+  { id: "VLAN 60 — DSI / Admin", subnet: "10.0.60.0/24", col: "#6366f1", desc: "Dell 5420 Admin → 10.0.60.10" },
+  { id: "VLAN 99 — Serveurs", subnet: "10.0.99.0/24", col: "#3b82f6", desc: "AD .10 · FS .11 · Ubuntu .12 · PBS .50" },
+  { id: "VLAN 100 — SOC", subnet: "10.0.100.0/24", col: "#f59e0b", desc: "Wazuh → 10.0.100.10" },
+  { id: "Kali — Isolé", subnet: "192.168.66.0/24", col: "#ef4444", desc: "Dell 5590 #2 → 192.168.66.10 — branché en simulation seulement" },
 ];
 
-const steps = [
-  { phase: "Phase 1 — Concevoir", color: "#6366f1", steps: [
-    { n: 1, label: "Figer objectifs de chaque projet (fil rouge DATASC.SEA)", done: true },
-    { n: 2, label: "Définir rôle de chaque machine physique", done: true },
-    { n: 3, label: "Définir stratégie réseau (autonomie pfSense)", done: true },
-    { n: 4, label: "Schéma réseau + plan IP + tableau RAM/vCPU", done: true, current: true },
-  ]},
-  { phase: "Phase 2 — Construire", color: "#3b82f6", steps: [
-    { n: 5, label: "Préparer clés USB bootables (Proxmox, PBS, Kali)" },
-    { n: 6, label: "Installer Proxmox sur la Tour (NVMe Gen5 1TB)" },
-    { n: 7, label: "Installer PBS bare-metal sur Dell 5590 #1" },
-    { n: 8, label: "Déployer pfSense + interfaces VLAN 10/20/60" },
-    { n: 9, label: "Déployer Windows Server AD/DNS/DHCP" },
-    { n: 10, label: "Déployer Windows Server Fichiers + Ubuntu x2" },
-    { n: 11, label: "Intégrer Dell 5420 au domaine DATASC.SEA" },
-  ]},
-  { phase: "Phase 3 — Sécuriser", color: "#f59e0b", steps: [
-    { n: 12, label: "Règles firewall pfSense (isolation DMZ / LAN / Admin)" },
-    { n: 13, label: "GPO sécurité (mots de passe, blocage USB, verrouillage)" },
-    { n: 14, label: "Sauvegardes automatisées Proxmox → PBS (règle 3-2-1)" },
-  ]},
-  { phase: "Phase 4 — Superviser & Démontrer", color: "#22c55e", steps: [
-    { n: 15, label: "Installer Wazuh sur Legion (agents sur toutes les VMs)" },
-    { n: 16, label: "Installer Zabbix sur Legion (CPU/RAM/disk/réseau)" },
-    { n: 17, label: "Laisser tourner 3-7 jours (historiques graphes + logs)" },
-    { n: 18, label: "Simulation : Kali → Nmap → brute force → hash AD" },
-    { n: 19, label: "Hashcat sur GPU tour → casser hash → justifier GPO" },
-    { n: 20, label: "Capturer preuves : alertes Wazuh, dashboards, logs" },
-  ]},
-  { phase: "Phase 5 — Rédiger le dossier RNCP", color: "#ec4899", steps: [
-    { n: 21, label: "Projet 1 : réécrire rapport DATASC.SEA à la 1ère personne" },
-    { n: 22, label: "Projet 2 : rédiger dossier lab infra (choix, schémas, captures)" },
-    { n: 23, label: "Projet 3 : rédiger dossier SOC + incident (preuves, remédiation)" },
-    { n: 24, label: "Préparer slides soutenance orale" },
-  ]},
+const FLUX = [
+  { a: "Box / répéteur WiFi", b: "→", c: "pfSense WAN", n: "Internet entrant", atk: false },
+  { a: "pfSense", b: "→", c: "Switch HPE", n: "LAN lab — tous VLANs", atk: false },
+  { a: "Switch HPE", b: "→", c: "Tour · Legion · Dells", n: "Câbles RJ45", atk: false },
+  { a: "Tour Proxmox", b: "→", c: "PBS (Dell #1)", n: "Jobs backup automatiques", atk: false },
+  { a: "Wazuh (Legion)", b: "←", c: "Toutes les VMs", n: "Agents Wazuh — collecte logs", atk: false },
+  { a: "Kali (Dell #2)", b: "⚡", c: "VMs Tour", n: "Attaques simulées — Nmap · brute force", atk: true },
+  { a: "Hash NTLM", b: "→", c: "GPU tour (Hashcat)", n: "Cassage → justifie les GPO AD", atk: true },
 ];
 
-export default function LabArchi() {
+const CSTS = [
+  { p: "Switches HPE non manageables (pas de VLANs 802.1q)", s: "Segmentation 100% logique via pfSense + Linux Bridges Proxmox. Le switch = multiprise RJ45.", col: "#f59e0b" },
+  { p: "Box internet éteinte la nuit", s: "pfSense = routeur autonome. Quand la box coupe, seul le WAN coupe. Le LAN lab reste 100% opérationnel.", col: "#22c55e" },
+  { p: "Câblage RJ45 pas encore terminé", s: "Le répéteur WiFi en Ethernet suffit. Le lab fonctionne entièrement en LAN local sans Internet permanent.", col: "#22c55e" },
+  { p: "Kali sur le LAN = risque de propagation", s: "Dell 5590 #2 physiquement débranché hors simulations. Branché uniquement lors des tests d'attaque contrôlés.", col: "#ef4444" },
+];
+
+const PHASES = [
+  {
+    ph: "Phase 1 — Préparer le matériel", col: "#6366f1", steps: [
+      { n: 1, l: "Télécharger Proxmox VE 8.x sur proxmox.com/downloads", cur: true },
+      { n: 2, l: "Télécharger Proxmox Backup Server sur proxmox.com/downloads" },
+      { n: 3, l: "Télécharger Kali Linux (Installer 64-bit) sur kali.org/get-kali" },
+      { n: 4, l: "Télécharger Rufus sur rufus.ie" },
+      { n: 5, l: "Flasher clé USB #1 avec Proxmox VE (mode DD dans Rufus)" },
+      { n: 6, l: "Flasher clé USB #2 avec PBS (mode DD dans Rufus)" },
+    ]
+  },
+  {
+    ph: "Phase 2 — Installer les hyperviseurs", col: "#3b82f6", steps: [
+      { n: 7, l: "BIOS tour MSI B850 : activer SVM Mode + désactiver Secure Boot" },
+      { n: 8, l: "Installer Proxmox VE sur le NVMe Gen5 1TB · IP temp 192.168.1.100" },
+      { n: 9, l: "Vérifier accès interface web : https://192.168.1.100:8006" },
+      { n: 10, l: "Installer PBS bare-metal sur Dell 5590 #1 · IP temp 192.168.1.101" },
+      { n: 11, l: "Vérifier accès interface web PBS : https://192.168.1.101:8007" },
+    ]
+  },
+  {
+    ph: "Phase 3 — Construire le SI", col: "#0ea5e9", steps: [
+      { n: 12, l: "Créer VM pfSense → configurer WAN + LAN + VLANs 10/20/60/99/100" },
+      { n: 13, l: "Créer VM Windows Server → AD, DNS, domaine DATASC.SEA" },
+      { n: 14, l: "Créer VM Windows Server → Serveur de fichiers, partages, AGDLP" },
+      { n: 15, l: "Créer VM Ubuntu Server → Apache, logs activés, IP 10.0.99.12" },
+      { n: 16, l: "Joindre Dell 5420 au domaine → tester GPO de base" },
+    ]
+  },
+  {
+    ph: "Phase 4 — Sécuriser", col: "#f59e0b", steps: [
+      { n: 17, l: "Règles firewall pfSense : isoler VLANs, bloquer flux non nécessaires" },
+      { n: 18, l: "GPO : complexité mots de passe, verrouillage session, blocage USB" },
+      { n: 19, l: "Connecter Proxmox au PBS → créer jobs backup automatiques" },
+      { n: 20, l: "Faire une restauration test → capturer la preuve pour le dossier" },
+    ]
+  },
+  {
+    ph: "Phase 5 — SOC & simulation d'attaque", col: "#22c55e", steps: [
+      { n: 21, l: "Installer Wazuh sur Legion · déployer agents sur toutes les VMs" },
+      { n: 22, l: "Configurer alertes : échecs connexion, scan réseau, service down" },
+      { n: 23, l: "Laisser tourner 5-7 jours → accumuler logs, graphes, historique" },
+      { n: 24, l: "Installer Kali sur Dell 5590 #2" },
+      { n: 25, l: "Simulation : Nmap → brute force → récupérer hash NTLM depuis AD" },
+      { n: 26, l: "Hashcat sur GPU tour (RX 9070 XT) → casser hash → justifier GPO" },
+      { n: 27, l: "Capturer tout : alertes Wazuh, résultats Hashcat, logs, dashboards" },
+      { n: 28, l: "(Optionnel) Installer Zabbix si temps restant → graphes CPU/RAM" },
+    ]
+  },
+  {
+    ph: "Phase 6 — Dossier RNCP", col: "#ec4899", steps: [
+      { n: 29, l: "Projet 1 : adapter rapport DATASC.SEA 69p → réécrire à la 1ère personne (rôle S1/S4/S8/S9)" },
+      { n: 30, l: "Projet 2 : rédiger dossier lab infra — contexte, choix techniques, schémas, captures" },
+      { n: 31, l: "Projet 3 : rédiger dossier SOC + incident — boucle Red→Blue→remédiation, preuves" },
+      { n: 32, l: "Préparer slides soutenance orale" },
+    ]
+  },
+];
+
+export default function App() {
   const [tab, setTab] = useState("machines");
-  const [selected, setSelected] = useState(null);
-
-  const sel = machines.find(m => m.id === selected);
+  const [sel, setSel] = useState(null);
+  const m = M.find(x => x.id === sel);
 
   return (
-    <div style={{ fontFamily: "monospace", background: "#0a0a0f", minHeight: "100vh", color: "#e2e8f0", padding: "16px" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: 24, borderBottom: "1px solid #1e293b", paddingBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e" }} />
-            <span style={{ color: "#64748b", fontSize: 10, letterSpacing: 3, textTransform: "uppercase" }}>RNCP 37680 — AIS</span>
-          </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>Infrastructure DATASC.SEA</h1>
-          <p style={{ color: "#64748b", fontSize: 12, marginTop: 4, marginBottom: 0 }}>Maquette PoC — Projets 2 & 3</p>
+    <div style={{ fontFamily: "monospace", padding: 16, maxWidth: 880, margin: "0 auto", color: "#e2e8f0", background: "#0a0a0f", minHeight: "100vh" }}>
+      {/* Header */}
+      <div style={{ borderBottom: "1px solid #1e293b", paddingBottom: 14, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }} />
+          <span style={{ fontSize: 10, letterSpacing: 2, color: "#64748b", textTransform: "uppercase" }}>RNCP 37680 — AIS — Architecture finale</span>
         </div>
+        <h1 style={{ fontSize: 20, fontWeight: 500, color: "#f1f5f9", margin: 0 }}>Lab DATASC.SEA</h1>
+        <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Version définitive · Projets 2 & 3 · On commence demain</p>
+      </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
-          {[["machines","🖥️ Machines"],["reseau","🌐 Réseau"],["plan","📋 Plan"]].map(([t, label]) => (
-            <button key={t} onClick={() => { setTab(t); setSelected(null); }}
-              style={{ padding: "8px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12,
-                fontFamily: "monospace", background: tab === t ? "#6366f1" : "#1e293b",
-                color: tab === t ? "#fff" : "#64748b" }}>
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 18 }}>
+        {[["machines", "🖥 Machines"], ["reseau", "🌐 Réseau & VLANs"], ["plan", "📋 Plan d'installation"]].map(([t, l]) => (
+          <button key={t} onClick={() => { setTab(t); setSel(null); }}
+            style={{ padding: "7px 14px", borderRadius: 6, border: "1px solid #1e293b", background: tab === t ? "#f1f5f9" : "transparent", color: tab === t ? "#0a0a0f" : "#94a3b8", cursor: "pointer", fontSize: 11, fontFamily: "monospace" }}>
+            {l}
+          </button>
+        ))}
+      </div>
 
-        {/* MACHINES */}
-        {tab === "machines" && (
-          <div>
-            <p style={{ fontSize: 11, color: "#475569", marginBottom: 14 }}>Clique sur une machine pour voir le détail</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 20 }}>
-              {machines.map(m => (
-                <div key={m.id} onClick={() => setSelected(selected === m.id ? null : m.id)}
-                  style={{ background: selected === m.id ? "#1a2235" : "#111827",
-                    border: `1px solid ${selected === m.id ? m.color : "#1e293b"}`,
-                    borderRadius: 10, padding: "12px 14px", cursor: "pointer",
-                    boxShadow: selected === m.id ? `0 0 16px ${m.color}33` : "none", transition: "all 0.15s" }}>
-                  <div style={{ fontSize: 9, background: m.color + "22", color: m.color, padding: "2px 6px", borderRadius: 4, display: "inline-block", marginBottom: 8, letterSpacing: 1 }}>
-                    {m.project}
-                  </div>
-                  <div style={{ fontWeight: 700, color: "#f1f5f9", fontSize: 12, marginBottom: 4 }}>{m.name}</div>
-                  <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.4 }}>{m.role}</div>
-                  <div style={{ marginTop: 8, fontSize: 9, color: m.color, borderTop: "1px solid #1e293b", paddingTop: 6 }}>{m.os}</div>
-                </div>
-              ))}
-            </div>
-
-            {sel && (
-              <div style={{ background: "#0f172a", border: `1px solid ${sel.color}55`, borderRadius: 12, padding: 20 }}>
-                <div style={{ marginBottom: 16 }}>
-                  <h2 style={{ margin: 0, color: sel.color, fontSize: 16 }}>{sel.name}</h2>
-                  <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>{sel.specs}</p>
-                </div>
-
-                {sel.note && (
-                  <div style={{ marginBottom: 16, background: sel.color + "11", border: `1px solid ${sel.color}33`, borderRadius: 8, padding: "10px 12px", fontSize: 11, color: sel.color, lineHeight: 1.5 }}>
-                    ℹ️ {sel.note}
-                  </div>
-                )}
-                {sel.gpu && (
-                  <div style={{ marginBottom: 16, background: "#ef444411", border: "1px solid #ef444433", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#ef4444" }}>
-                    🔥 GPU : {sel.gpu}
-                  </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: sel.vms.length > 0 ? "1fr 1fr" : "1fr", gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, marginBottom: 8, textTransform: "uppercase" }}>Stockage</div>
-                    {sel.storage.map((s, i) => (
-                      <div key={i} style={{ background: "#1e293b", borderRadius: 6, padding: "8px 10px", marginBottom: 6 }}>
-                        <div style={{ color: "#f1f5f9", fontSize: 11, fontWeight: 600 }}>{s.label}</div>
-                        <div style={{ color: "#64748b", fontSize: 10, marginTop: 2 }}>{s.usage}</div>
-                      </div>
-                    ))}
-                    <div style={{ marginTop: 10, fontSize: 10, color: "#475569", fontStyle: "italic" }}>RAM totale : {sel.totalRam}</div>
-                  </div>
-
-                  {sel.vms.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, marginBottom: 8, textTransform: "uppercase" }}>VMs déployées</div>
-                      {sel.vms.map((vm, i) => (
-                        <div key={i} style={{ background: "#1e293b", borderRadius: 6, padding: "8px 10px", marginBottom: 6, borderLeft: `3px solid ${vm.color}` }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "#f1f5f9", fontSize: 11, fontWeight: 700 }}>{vm.name}</span>
-                            <span style={{ fontSize: 9, color: vm.color }}>{vm.type}</span>
-                          </div>
-                          <div style={{ display: "flex", gap: 10, fontSize: 9, color: "#64748b", marginTop: 4 }}>
-                            <span>⚡ {vm.cpu}</span><span>🧠 {vm.ram}</span><span>💾 {vm.disk}</span>
-                          </div>
-                          <div style={{ fontSize: 9, color: "#475569", marginTop: 2 }}>🌐 {vm.net}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* RÉSEAU */}
-        {tab === "reseau" && (
-          <div>
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, marginBottom: 12, textTransform: "uppercase" }}>
-                Segmentation 100% virtuelle — pfSense + Linux Bridges Proxmox (switches HPE non manageables)
-              </div>
-              {vlans.map(v => (
-                <div key={v.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, padding: "10px 12px",
-                  marginBottom: 6, background: "#111827", borderRadius: 8, borderLeft: `4px solid ${v.color}` }}>
-                  <div style={{ minWidth: 130 }}>
-                    <div style={{ color: v.color, fontWeight: 700, fontSize: 12 }}>{v.id} — {v.name}</div>
-                    <div style={{ color: "#475569", fontSize: 10, marginTop: 2 }}>{v.subnet}</div>
-                  </div>
-                  <div style={{ color: "#94a3b8", fontSize: 11 }}>{v.desc}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, marginBottom: 12, textTransform: "uppercase" }}>Flux réseau</div>
-              {[
-                { from: "Box / Répéteur WiFi", to: "pfSense WAN", arrow: "→", note: "Internet entrant" },
-                { from: "pfSense LAN", to: "Switch HPE", arrow: "→", note: "LAN interne lab" },
-                { from: "Switch HPE", to: "Tour / Legion / Dells", arrow: "→", note: "Câble RJ45" },
-                { from: "Tour (Proxmox)", to: "PBS (Dell 5590 #1)", arrow: "→", note: "Sauvegardes VMs" },
-                { from: "Wazuh (Legion)", to: "VMs Tour", arrow: "←", note: "Collecte logs / alertes" },
-                { from: "Kali (Dell 5590 #2)", to: "LAN lab", arrow: "⚡", note: "Attaques simulées" },
-              ].map((f, i) => (
-                <div key={i} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 11 }}>
-                  <span style={{ color: "#6366f1", minWidth: 140 }}>{f.from}</span>
-                  <span style={{ color: f.arrow === "⚡" ? "#ef4444" : "#64748b" }}>{f.arrow}</span>
-                  <span style={{ color: "#94a3b8", minWidth: 130 }}>{f.to}</span>
-                  <span style={{ color: "#475569", fontStyle: "italic", fontSize: 10 }}>{f.note}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, marginBottom: 12, textTransform: "uppercase" }}>Contraintes & solutions</div>
-              {[
-                { prob: "Switches non manageables", sol: "Segmentation 100% logique via pfSense + Linux Bridges Proxmox", color: "#f59e0b" },
-                { prob: "Box éteinte la nuit", sol: "pfSense = routeur autonome. Quand box coupe → seul WAN coupe, LAN reste UP", color: "#22c55e" },
-                { prob: "Pas de câblage RJ45 terminé", sol: "Répéteur WiFi en Ethernet suffit. LAN interne autonome sans Internet", color: "#22c55e" },
-                { prob: "Kali sur le LAN = risque", sol: "Dell 5590 #2 débranché hors simulations. Allumé uniquement pour les tests", color: "#ef4444" },
-              ].map((c, i) => (
-                <div key={i} style={{ marginBottom: 10, padding: "10px 12px", background: "#111827", borderRadius: 8, borderLeft: `3px solid ${c.color}` }}>
-                  <div style={{ color: "#ef4444", fontSize: 11, marginBottom: 4 }}>⚠ {c.prob}</div>
-                  <div style={{ color: "#94a3b8", fontSize: 11 }}>✓ {c.sol}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* PLAN */}
-        {tab === "plan" && (
-          <div>
-            {steps.map((phase, pi) => (
-              <div key={pi} style={{ marginBottom: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ height: 2, width: 16, background: phase.color }} />
-                  <span style={{ color: phase.color, fontWeight: 700, fontSize: 13 }}>{phase.phase}</span>
-                </div>
-                {phase.steps.map((s, si) => (
-                  <div key={si} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", marginBottom: 4,
-                    background: s.current ? phase.color + "15" : "#111827",
-                    border: s.current ? `1px solid ${phase.color}66` : "1px solid #1e293b",
-                    borderRadius: 8 }}>
-                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%",
-                      background: s.done ? phase.color : "#1e293b",
-                      border: s.current ? `2px solid ${phase.color}` : "none",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 9, color: s.done ? "#000" : "#64748b", fontWeight: 700, flexShrink: 0 }}>
-                      {s.done ? "✓" : s.n}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 12, color: s.current ? "#f1f5f9" : s.done ? "#475569" : "#94a3b8" }}>
-                        {s.label}
-                      </span>
-                      {s.current && (
-                        <span style={{ marginLeft: 8, fontSize: 9, color: phase.color, background: phase.color + "22", padding: "1px 6px", borderRadius: 4 }}>
-                          ← TU ES ICI
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+      {/* MACHINES */}
+      {tab === "machines" && (
+        <div>
+          <p style={{ fontSize: 11, color: "#475569", marginBottom: 12 }}>Clique sur une machine pour le détail complet</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(155px,1fr))", gap: 10, marginBottom: 18 }}>
+            {M.map(mc => (
+              <div key={mc.id} onClick={() => setSel(sel === mc.id ? null : mc.id)}
+                style={{ border: `1px solid ${sel === mc.id ? mc.col : "#1e293b"}`, borderRadius: 10, padding: 12, cursor: "pointer", background: sel === mc.id ? "#111827" : "transparent", transition: "all .15s" }}>
+                <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", padding: "2px 6px", borderRadius: 4, background: mc.col + "18", color: mc.col, display: "inline-block", marginBottom: 8 }}>{mc.proj}</span>
+                <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 3, color: "#f1f5f9" }}>{mc.name}</div>
+                <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.4 }}>{mc.role}</div>
+                <div style={{ fontSize: 9, color: mc.col, marginTop: 8, paddingTop: 7, borderTop: "1px solid #1e293b" }}>{mc.os}</div>
               </div>
             ))}
           </div>
-        )}
 
-        <div style={{ marginTop: 28, padding: "10px 14px", background: "#111827", borderRadius: 8, fontSize: 10, color: "#475569", borderLeft: "3px solid #6366f1" }}>
-          RNCP 37680 — AIS — Lab DATASC.SEA PoC — 3 projets : Audit · Infrastructure · SOC
+          {m && (
+            <div style={{ border: `1px solid ${m.col}44`, borderRadius: 12, padding: 18, background: "#0f172a" }}>
+              <div style={{ fontSize: 15, fontWeight: 500, color: m.col, marginBottom: 3 }}>{m.name}</div>
+              <div style={{ fontSize: 11, color: "#64748b", marginBottom: 14 }}>{m.specs}</div>
+              {m.note && <div style={{ borderLeft: `3px solid ${m.col}`, borderRadius: "0 7px 7px 0", padding: "9px 11px", fontSize: 11, lineHeight: 1.5, marginBottom: 10, background: "#111827", color: "#94a3b8" }}>ℹ {m.note}</div>}
+              {m.gpu && <div style={{ borderLeft: "3px solid #ef4444", borderRadius: "0 7px 7px 0", padding: "9px 11px", fontSize: 11, marginBottom: 10, background: "#111827", color: "#ef4444" }}>🔥 {m.gpu}</div>}
+              <div style={{ display: "grid", gridTemplateColumns: m.vms.length ? "1fr 1fr" : "1fr", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", marginBottom: 8 }}>Stockage</div>
+                  {m.storage.map((s, i) => (
+                    <div key={i} style={{ border: "1px solid #1e293b", borderRadius: 6, padding: "7px 10px", marginBottom: 5 }}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: "#f1f5f9" }}>{s.l}</div>
+                      <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{s.u}</div>
+                    </div>
+                  ))}
+                  {!m.vms.length && <div style={{ fontSize: 10, color: "#475569", marginTop: 6, fontStyle: "italic" }}>{m.ram}</div>}
+                </div>
+                {m.vms.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", marginBottom: 8 }}>VMs hébergées</div>
+                    {m.vms.map((v, i) => (
+                      <div key={i} style={{ borderLeft: `3px solid ${v.col}`, borderRadius: 6, padding: "8px 10px", marginBottom: 5, background: "#111827" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "#f1f5f9" }}>{v.n}</span>
+                          <span style={{ fontSize: 9, color: "#64748b" }}>{v.t}</span>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, fontSize: 9, color: "#64748b", marginTop: 4, flexWrap: "wrap" }}>
+                          <span>⚡ {v.cpu}</span><span>🧠 {v.ram}</span><span>💾 {v.disk}</span><span>🌐 {v.ip}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 10, color: "#475569", marginTop: 6, fontStyle: "italic" }}>{m.ram}</div>
+                    {m.ramPct > 0 && (
+                      <div style={{ height: 6, borderRadius: 3, background: "#1e293b", marginTop: 6, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: m.ramPct + "%", background: m.col, borderRadius: 3 }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* RÉSEAU */}
+      {tab === "reseau" && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ border: "1px solid #1e293b", borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", marginBottom: 10 }}>Plan réseau — VLANs logiques via pfSense</div>
+              {VLANS.map((v, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 10px", borderRadius: 8, marginBottom: 5, borderLeft: `4px solid ${v.col}`, background: "#111827", flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 90 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: "#f1f5f9" }}>{v.id}</div>
+                    <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>{v.subnet}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#94a3b8" }}>{v.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ border: "1px solid #1e293b", borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", marginBottom: 10 }}>Flux entre les machines</div>
+              {FLUX.map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, padding: "6px 0", borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
+                  <span style={{ color: "#94a3b8", minWidth: 110 }}>{f.a}</span>
+                  <span style={{ color: f.atk ? "#ef4444" : "#64748b", minWidth: 18, textAlign: "center" }}>{f.b}</span>
+                  <span style={{ color: "#94a3b8", minWidth: 110 }}>{f.c}</span>
+                  <span style={{ fontSize: 9, color: "#475569", fontStyle: "italic" }}>{f.n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #1e293b", borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", marginBottom: 10 }}>Contraintes & solutions retenues</div>
+            {CSTS.map((c, i) => (
+              <div key={i} style={{ borderLeft: `3px solid ${c.col}`, borderRadius: 8, padding: "9px 11px", marginBottom: 8, background: "#111827" }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>⚠ {c.p}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>✓ {c.s}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PLAN */}
+      {tab === "plan" && (
+        <div>
+          {PHASES.map((ph, pi) => (
+            <div key={pi} style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ height: 2, width: 16, background: ph.col, borderRadius: 1 }} />
+                <span style={{ fontSize: 12, fontWeight: 500, color: ph.col }}>{ph.ph}</span>
+              </div>
+              {ph.steps.map((s, si) => (
+                <div key={si} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 4, border: `1px solid ${s.cur ? "#334155" : "#1e293b"}`, background: s.cur ? "#111827" : "transparent" }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, flexShrink: 0, border: `${s.cur ? 2 : 1}px solid ${s.cur ? ph.col : "#334155"}`, background: s.done ? "#f1f5f9" : "transparent", color: s.done ? "#0a0a0f" : "#64748b" }}>
+                    {s.done ? "✓" : s.n}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 11, lineHeight: 1.5, color: s.cur ? "#f1f5f9" : s.done ? "#475569" : "#94a3b8" }}>{s.l}</span>
+                    {s.cur && <span style={{ fontSize: 9, color: ph.col, background: ph.col + "18", padding: "1px 6px", borderRadius: 4, marginLeft: 6 }}>← TU ES ICI</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 24, padding: "10px 14px", borderRadius: 8, fontSize: 10, color: "#475569", borderLeft: "3px solid #334155" }}>
+        RNCP 37680 · AIS · Lab DATASC.SEA PoC · Projet 1 : Audit/Gouvernance · Projet 2 : Infrastructure · Projet 3 : SOC/Incident
       </div>
     </div>
   );
